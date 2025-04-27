@@ -15,7 +15,7 @@ app = Flask(__name__)
 # Allow only your Render backend and your S3 frontend URL
 CORS(app, resources={r"/upload": {"origins": [
     "http://notes-on-photos.s3-website.us-east-2.amazonaws.com",  # Your frontend S3 URL
-    "https://notes-on-photos.onrender.com"  # Replace with your Render backend URL
+    "https://notes-on-photos-2.onrender.com"  # Replace with your Render backend URL
 ]}})
 
 @app.after_request
