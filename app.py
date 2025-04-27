@@ -11,18 +11,22 @@ environment.set('musicxmlPath', '')
 environment.set('musescoreDirectPNGPath', '')
 
 app = Flask(__name__)
-CORS(app)
+
+# Allow only your Render backend and your S3 frontend URL
+CORS(app, resources={r"/upload": {"origins": [
+    "http://notes-on-photos.s3-website.us-east-2.amazonaws.com",  # Your frontend S3 URL
+    "https://notes-on-photos.onrender.com"  # Replace with your Render backend URL
+]}})
 
 @app.after_request
 def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "*")
-    response.headers.add("Access-Control-Allow-Methods", "*")
     return response
 
 @app.route('/upload', methods=['OPTIONS'])
 def options_upload():
     return '', 200
+
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 
 UPLOAD_FOLDER = "uploads"
 SONG_FOLDER = "songs"
@@ -214,4 +218,4 @@ def generate_song(photo_path):
         return None
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
+    app.run(debug=False, port=5002)
