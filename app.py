@@ -5,10 +5,14 @@ import uuid
 from music21 import clef, note, stream, interval, meter
 from PIL import Image
 from music21 import environment
+import logging
 
 # Disable automatic rendering by clearing MuseScore paths
 environment.set('musicxmlPath', '')
 environment.set('musescoreDirectPNGPath', '')
+
+# Set up logging to track issues
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -26,6 +30,7 @@ def after_request(response):
 def options_upload():
     return '', 200
 
+# Limit upload size to 10MB
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
 
 UPLOAD_FOLDER = "uploads"
@@ -33,8 +38,11 @@ SONG_FOLDER = "songs"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(SONG_FOLDER, exist_ok=True)
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_photo():
+    if request.method == 'OPTIONS':
+        return '', 200  # Handle CORS pre-flight request
+
     if 'photo' not in request.files:
         return jsonify({"error": "No photo uploaded"}), 400
 
@@ -57,13 +65,13 @@ def upload_photo():
 def generate_song(photo_path):
     try:
         if not os.path.exists(photo_path):
-            print("🔴 File not found:", photo_path)
+            logging.error("File not found: %s", photo_path)
             return None
 
         img = Image.open(photo_path).convert("L")
         img = img.resize((10, 10))
         pixel_values = list(img.getdata())
-        print("✅ Pixel Values:", pixel_values[:10])
+        logging.info("Pixel Values: %s", pixel_values[:10])
 
         tonic_pitch = 60  # Middle C
         scale_degrees = [0, 2, 4, 5, 7, 9, 11]  # Major scale intervals (upward)
@@ -89,7 +97,7 @@ def generate_song(photo_path):
             top_line.append(note.Note(pitch, quarterLength=4))
             previous_pitch = pitch
 
-        print("✅ Top Line Pitches:", [n.pitch.midi for n in top_line.notes])
+        logging.info("Top Line Pitches: %s", [n.pitch.midi for n in top_line.notes])
 
         # Generate the bottom line
         previous_cf_pitch = None
@@ -190,7 +198,7 @@ def generate_song(photo_path):
 
             previous_cf_pitch = cf_pitch
 
-        print("✅ Bottom Line Pitches:", [n.pitch.midi for n in bottom_line.notes])
+        logging.info("Bottom Line Pitches: %s", [n.pitch.midi for n in bottom_line.notes])
 
         # Combine the parts into the score
         score.append(top_line)
@@ -214,8 +222,10 @@ def generate_song(photo_path):
         return note_data
 
     except Exception as e:
-        print(f"🔴 Error generating song: {str(e)}")
+        logging.error("Error generating song: %s", str(e))
         return None
 
 if __name__ == '__main__':
-    app.run(debug=False, port=5002)
+    # Let Render handle the port binding
+    port = int(os.environ.get("PORT", 5002))  # Fallback to 5002 if no port is set
+    app.run(debug=False, host="0.0.0.0", port=port)
