@@ -55,8 +55,10 @@ def upload_photo():
     photo.save(photo_path)
 
     note_data = generate_song(photo_path)
+    os.remove(photo_path)  # Clean up uploaded photo after processing
     if not note_data:
         return jsonify({"error": "Error generating song"}), 500
+
 
     return jsonify({
         "noteData": note_data
